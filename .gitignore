@@ -1,0 +1,6 @@
+C:\Users\sachi\source\aws-lambda\stepfunction-apm-terraform\.terraform
+stepfunction-apm-terraform\.terraform
+.terraform.lock.hcl
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
