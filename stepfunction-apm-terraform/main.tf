@@ -11,6 +11,8 @@ provider "aws" {
   region = var.region
 }
 
+data "aws_caller_identity" "current" {}
+
 # IAM Role for Lambdas
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_basic_role"
@@ -39,6 +41,14 @@ locals {
     LambdaD = "lambdaD"
     LambdaE = "lambdaE"
   }
+}
+
+# Automatically zip each Lambda folder
+data "archive_file" "lambda_zip" {
+  for_each    = local.lambda_dirs
+  type        = "zip"
+  source_dir  = "${path.module}/${each.value}"
+  output_path = "${path.module}/${each.value}.zip"
 }
 
 resource "aws_lambda_function" "lambdas" {
@@ -75,6 +85,31 @@ resource "aws_iam_role_policy_attachment" "sf_policy" {
 resource "aws_iam_role_policy_attachment" "sf_events" {
   role       = aws_iam_role.sf_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchEventsFullAccess"
+}
+
+# Allow Step Functions to write logs
+resource "aws_iam_role_policy_attachment" "sf_logs" {
+  role       = aws_iam_role.sf_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+}
+
+# Allow Step Functions to invoke all Lambda functions
+resource "aws_iam_role_policy" "sf_invoke_lambda" {
+  name = "sf_invoke_lambda"
+  role = aws_iam_role.sf_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:*"
+      }
+    ]
+  })
 }
 
 # Step Function 2
